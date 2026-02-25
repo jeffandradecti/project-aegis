@@ -1,0 +1,49 @@
+# ==========================================
+# EXPLICIT EXCLUSIONS
+# ==========================================
+
+# IDE
+/.idea/
+
+# Virtual Environment & Secrets
+/.venv/
+/.env
+/.ssh/
+
+# Cloud CLI & Executables
+/aws-cli/
+/terraform.exe
+
+# Terraform State, Locks & Artifacts
+/terraform/.terraform/
+/terraform/terraform.terraform.lock.hcl
+/terraform/.terraform.lock.hcl
+/terraform/terraform.tfstate
+/terraform/terraform.tfstate.backup
+/terraform/forensics_lambda.zip
+
+# Project Outputs
+/results/
+
+# Project Data
+/data/
+
+# ==========================================
+# STANDARD PYTHON & OS EXCLUSIONS
+# ==========================================
+
+# Python Bytecode & Caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

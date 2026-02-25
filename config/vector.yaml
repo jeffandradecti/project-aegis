@@ -1,0 +1,29 @@
+data_dir: "/var/lib/vector"
+sources:
+  cowrie_logs:
+    type: "file"
+    include:
+      - "/home/cowrie/cowrie/var/log/cowrie/cowrie.json"
+    read_from: "beginning"
+transforms:
+  parse_json:
+    type: "remap"
+    inputs: [ "cowrie_logs" ]
+    source: |
+      parsed, err = parse_json(.message)
+      if err != null { 
+          abort 
+      }
+      . = parsed
+sinks:
+  s3_archive:
+    type: "aws_s3"
+    inputs: [ "parse_json" ]
+    bucket: "cowrie-vector-logs-a570fac6"
+    region: "us-east-1"
+    compression: "gzip"
+    encoding:
+      codec: "json"
+    key_prefix: "cowrie/date=%Y-%m-%d/"
+    auth:
+      credentials_file: "/etc/vector/.aws/credentials.txt"

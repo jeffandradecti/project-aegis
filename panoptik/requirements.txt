@@ -1,0 +1,6 @@
+pefile
+python-magic
+capstone
+iocextract
+validators
+boto3

@@ -98,6 +98,27 @@ def init_db(db_path):
     return conn
 
 
+# NEW HELPER: Find the most recent date in the DB
+def get_last_processed_date(conn):
+    """Returns the date string (YYYY-MM-DD) of the most recent session in the database."""
+    cursor = conn.cursor()
+    # Check if the table has data
+    cursor.execute("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='sessions'")
+    if cursor.fetchone()[0] == 0:
+        return None
+
+    try:
+        cursor.execute("SELECT MAX(start_time) FROM sessions")
+        result = cursor.fetchone()[0]
+        if result:
+            # Cowrie timestamps look like "2026-02-25T14:32:01.123Z", we just need the "YYYY-MM-DD" part
+            return result.split('T')[0]
+    except Exception:
+        pass
+
+    return None
+
+
 def save_to_db(conn, sessions):
     """Inserts enriched session data into the SQLite database."""
     cursor = conn.cursor()
@@ -220,7 +241,7 @@ def parse_cowrie_line(line, sessions):
 def fetch_daily_sessions(s3, enricher, bucket_name, server_ip, target_date):
     """Processes a single day of logs."""
     prefix = f"cowrie/date={target_date}/"
-    print(f"\n[*] Processing logs for {target_date}...")
+    print(f"[*] Fetching logs for {target_date}...")
 
     honeypot_geo = enricher.get_location(server_ip)
     paginator = s3.get_paginator('list_objects_v2')
@@ -254,41 +275,65 @@ def fetch_daily_sessions(s3, enricher, bucket_name, server_ip, target_date):
         if attacker_geo and honeypot_geo:
             data['geo'] = {"source": attacker_geo, "destination": honeypot_geo}
 
-    print(f"[*] Found {total_files} files -> {len(sessions)} unique sessions.")
+    print(f"    -> Found {total_files} files, containing {len(sessions)} unique sessions.")
     return sessions
 
 
-def import_all_history():
-    """Finds all available dates in S3 and imports them into the local SQLite DB."""
+# UPDATED: Now performs an incremental update
+def update_database():
+    """Finds new dates in S3 based on the local DB state and appends them."""
     s3 = get_s3_client()
     bucket_name = os.getenv('BUCKET_NAME')
     server_ip = os.getenv('SERVER_IP')
 
-    print("[*] Initializing Database at data/aegis_intel.sqlite")
+    print("[*] Connecting to Database at data/aegis_intel.sqlite")
     conn = init_db('data/aegis_intel.sqlite')
     enricher = GeoEnricher('data/GeoLite2-City.mmdb')
 
-    print("[*] Scanning S3 for historical dates...")
+    # 1. Check local state
+    last_date = get_last_processed_date(conn)
+    if last_date:
+        print(f"[*] Local database is up to date through: {last_date}")
+    else:
+        print("[*] Local database is empty. Performing full initial sync.")
+
+    # 2. Get available dates from S3
+    print("[*] Scanning S3 for available dates...")
     result = s3.list_objects_v2(Bucket=bucket_name, Prefix='cowrie/', Delimiter='/')
     prefixes = [p.get('Prefix') for p in result.get('CommonPrefixes', [])]
 
-    dates_to_process = []
+    s3_dates = []
     for prefix in prefixes:
         if 'date=' in prefix:
             date_str = prefix.split('date=')[1].strip('/')
-            dates_to_process.append(date_str)
+            s3_dates.append(date_str)
 
-    print(f"[*] Found {len(dates_to_process)} days of data to process.")
+    # 3. Filter for dates we need to process
+    dates_to_process = []
+    for d in sorted(s3_dates):
+        # If we have a last_date, only process dates >= last_date.
+        # We re-process the exact last_date because it might have been an incomplete day
+        # when the script ran (e.g., if it ran at noon, we need the afternoon logs).
+        # The 'INSERT OR IGNORE' in save_to_db handles any duplicate sessions safely.
+        if last_date is None or d >= last_date:
+            dates_to_process.append(d)
 
-    for target_date in sorted(dates_to_process):
-        sessions = fetch_daily_sessions(s3, enricher, bucket_name, server_ip, target_date)
-        save_to_db(conn, sessions)
-        print(f"[*] Successfully wrote {target_date} data to SQLite.")
+    if not dates_to_process:
+        print("[+] No new data found in S3. Database is current.")
+    else:
+        print(f"[*] Found {len(dates_to_process)} days of data to process or update.")
+        for target_date in dates_to_process:
+            sessions = fetch_daily_sessions(s3, enricher, bucket_name, server_ip, target_date)
+            if sessions:
+                save_to_db(conn, sessions)
+                print(f"    -> Successfully wrote new data for {target_date} to SQLite.")
+            else:
+                print(f"    -> No valid session data found for {target_date}.")
 
     enricher.close()
     conn.close()
-    print("\n[+] Import complete. Database is ready.")
+    print("\n[+] Update complete. Database is ready.")
 
 
 if __name__ == "__main__":
-    import_all_history()
+    update_database()

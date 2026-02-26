@@ -1,0 +1,9 @@
+boto3~=1.42.50
+geoip2~=5.2.0
+python-dotenv~=1.2.1
+streamlit~=1.54.0
+pydeck~=0.9.1
+pandas~=2.3.3
+pyzipper~=0.3.6
+pycdlib~=1.14.0
+setuptools~=82.0.0

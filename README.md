@@ -11,7 +11,7 @@
 ### 1. The Sensor Network (Collection)
 
 * **Infrastructure-as-Code (IaC):** **Terraform** is used to provision and manage global honeypot nodes on **DigitalOcean**.
-* **Honeypot Nodes:** Droplets configured with **Cowrie** to capture SSH/Telnet authentication attempts, TTY logs, and malware payloads (scripts, droppers, binaries).
+* **Honeypot Nodes 🐝:** Droplets configured with **Cowrie** to capture SSH/Telnet authentication attempts, TTY logs, and malware payloads (scripts, droppers, binaries).
 * **Data Transport:** Real-time synchronization of logs and artifacts to an **AWS S3** bucket via **Vector** and the **AWS API**.
 
 ### 2. The Panoptik Engine (Processing & Triage)

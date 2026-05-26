@@ -27,14 +27,23 @@ The core processing system is a custom-built Python orchestrator running serverl
 
 #### The CTI Intelligence Cycle
 
-| Phase                       | Technical Implementation                                                                    |
-|-----------------------------|---------------------------------------------------------------------------------------------|
-| **Planning and Direction**  | Identification of Intelligence Requirements (IRs) regarding priority telemetry needs.       |
-| **Collection**              | Raw data gathering via Terraform-provisioned Droplets and AWS S3 synchronization.           |
-| **Processing**              | AWS Lambda automation for converting raw payloads into secure `.ISO` forensics files.       |
-| **Analysis**                | Extraction of attacker TTPs from honeypot telemetry and contextualized threat intelligence. |
-| **Dissemination**           | Delivery of intelligence via automated Blocklist exports and AlienVault pulse.              |
-| **Feedback and Evaluation** | Ongoing assessment of intelligence utility to refine collection and tuning.                 |
+| Phase                       | Technical Implementation                                                                                                     |
+|-----------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| **Planning and Direction**  | Identification of Intelligence Requirements (IRs) regarding priority telemetry needs.                                        |
+| **Collection**              | Raw data gathering via Terraform-provisioned Droplets and AWS S3 synchronization.                                            |
+| **Processing**              | AWS Lambda automation for converting raw payloads into secure `.ISO` forensics files.                                        |
+| **Analysis**                | Extraction of attacker TTPs from honeypot telemetry and contextualized threat intelligence.                                  |
+| **Dissemination**           | Public sharing of Cowrie honeypot datasets via secure Proton Drive links, automated Blocklist exports, and AlienVault pulse. |
+| **Feedback and Evaluation** | Ongoing assessment of intelligence utility to refine collection and tuning.                                                  |
+
+---
+
+#### Community Intelligence Sharing
+
+As part of the commitment to active defense and community collaboration, processed data from the Cowrie honeypot is shared for research and analysis.
+
+* **Data Access:** [Proton Drive Secure Link](https://drive.proton.me/urls/CB4640NPVW#RcGTvYu1Lnvk)
+* **Archive Password:** `Aegis-Intel!`
 
 ---
 
@@ -50,7 +59,7 @@ The core processing system is a custom-built Python orchestrator running serverl
 * **Phase 1: Sensor Deployment** — Provisioned global multi-cloud honeypot and blocklist nodes via Terraform.
 * **Phase 2: Forensics Engine** — Built serverless orchestrator for automated `.ISO` generation and data handling.
 * **Phase 3: Integration** — Bridging collected data with Threat Intel Platforms for dropped malware enrichment.
-* **Phase 4: Active Defense (Ready)** — Engineering a dynamic blocklist exporter for automated firewall response.
+* **Phase 4: Active Defense (Ready, project concluded)** — Engineering a dynamic blocklist exporter for automated firewall response.
 
 **Author**
 Jefferson Andrade

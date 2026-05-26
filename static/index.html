@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis Intel - Bipartite Correlation Graph</title>
+    <script src="https://unpkg.com/force-graph"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0d1117;
+            font-family: 'Courier New', Courier, monospace;
+            color: #c9d1d9;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background: rgba(22, 27, 34, 0.9);
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 10;
+            box-sizing: border-box;
+        }
+
+        #header h1 {
+            font-size: 18px;
+            color: #58a6ff;
+            font-weight: bold;
+            margin: 0 40px 0 0;
+        }
+
+        #details-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 420px;
+            background: rgba(22, 27, 34, 0.95);
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 15px;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            display: none;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #details-panel h3 {
+            color: #79c0ff;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 5px;
+            margin: 0 0 5px 0;
+        }
+
+        .meta-row { margin-bottom: 8px; font-size: 13px; word-wrap: break-word; }
+        .meta-key { font-weight: bold; color: #8b949e; }
+        .meta-val { color: #e6edf3; }
+
+        .terminal-block {
+            background: #010409;
+            border: 1px solid #30363d;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-height: 250px;
+            overflow-y: auto;
+            color: #3fb950;
+        }
+
+        .terminal-line { margin-bottom: 3px; white-space: pre-wrap; word-break: break-all; }
+        .terminal-prompt { color: #58a6ff; font-weight: bold; margin-right: 5px; }
+
+        #legend {
+            position: absolute;
+            top: 70px;
+            left: 20px;
+            background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d;
+            padding: 10px;
+            border-radius: 6px;
+            z-index: 10;
+            font-size: 12px;
+        }
+
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .color-box { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+
+        #graph-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <h1>Aegis Intel - Threat Infrastructure Map</h1>
+        <span style="color:#8b949e; font-size: 13px;">Hover over any node to highlight correlations. Click to inspect metadata and shell commands.</span>
+    </div>
+
+    <div id="legend">
+        <div class="legend-item"><div class="color-box" style="background: #ff7b72;"></div> Attacker IP</div>
+        <div class="legend-item"><div class="color-box" style="background: #d2a8ff;"></div> Malware Payload</div>
+        <div class="legend-item"><div class="color-box" style="background: #ffa657;"></div> TTY Log (Keystrokes)</div>
+        <hr style="border: 0; border-top: 1px solid #30363d; margin: 10px 0;">
+        <div class="legend-item"><i>Node Size = Activity Volume</i></div>
+        <div class="legend-item"><i>Line Thickness = Session Count</i></div>
+    </div>
+
+    <div id="details-panel">
+        <h3 id="panel-title">Node Details</h3>
+        <div id="panel-content"></div>
+    </div>
+
+    <div id="graph-container"></div>
+
+    <script>
+        // @ts-nocheck
+        /* global ForceGraph */
+
+        const colorMap = {
+            "IP": "#ff7b72",
+            "Malware": "#d2a8ff",
+            "TTY": "#ffa657"
+        };
+
+        const detailsPanel = document.getElementById('details-panel');
+        const panelTitle = document.getElementById('panel-title');
+        const panelContent = document.getElementById('panel-content');
+
+        let highlightNodes = new Set();
+        let highlightLinks = new Set();
+        let hoverNode = null;
+
+        const Graph = ForceGraph()(document.getElementById('graph-container'));
+
+        window.addEventListener('resize', () => { Graph.width(window.innerWidth).height(window.innerHeight); });
+
+        fetch('/api/graph')
+            .then(res => res.json())
+            .then(data => {
+
+                data.links.forEach(link => {
+                    const a = data.nodes.find(n => n.id === link.source);
+                    const b = data.nodes.find(n => n.id === link.target);
+                    if(!a || !b) return;
+
+                    if (!a.neighbors) a.neighbors = [];
+                    if (!b.neighbors) b.neighbors = [];
+                    a.neighbors.push(b);
+                    b.neighbors.push(a);
+
+                    if (!a.links) a.links = [];
+                    if (!b.links) b.links = [];
+                    a.links.push(link);
+                    b.links.push(link);
+                });
+
+                Graph
+                    .graphData(data)
+                    .nodeId('id')
+                    .nodeLabel('label')
+                    .nodeColor(node => {
+                        if (hoverNode && !highlightNodes.has(node)) return 'rgba(255,255,255,0.1)';
+                        return colorMap[node.group] || '#ffffff';
+                    })
+                    .nodeVal(node => Math.max(4, Math.min(25, node.val * 2)))
+                    .linkColor(link => highlightLinks.has(link) ? '#58a6ff' : 'rgba(255,255,255,0.1)')
+                    .linkWidth(link => highlightLinks.has(link) ? Math.max(2, Math.min(8, link.weight)) : Math.max(1, Math.min(5, link.weight / 2)))
+                    .linkDirectionalParticles(link => highlightLinks.has(link) ? 4 : 0)
+                    .linkDirectionalParticleWidth(3)
+                    .onNodeHover(node => {
+                        if ((!node && !highlightNodes.size) || (node && hoverNode === node)) return;
+
+                        highlightNodes.clear();
+                        highlightLinks.clear();
+                        if (node) {
+                            highlightNodes.add(node);
+                            if (node.neighbors) node.neighbors.forEach(neighbor => highlightNodes.add(neighbor));
+                            if (node.links) node.links.forEach(link => highlightLinks.add(link));
+                        }
+
+                        hoverNode = node || null;
+                        Graph.nodeColor(Graph.nodeColor())
+                             .linkWidth(Graph.linkWidth())
+                             .linkDirectionalParticles(Graph.linkDirectionalParticles());
+                    })
+                    .onNodeClick(node => {
+                        Graph.centerAt(node.x, node.y, 1000);
+                        Graph.zoom(3, 1000);
+
+                        panelTitle.innerText = `${node.group}: ${node.label}`;
+                        let contentHtml = '';
+
+                        for (const [key, value] of Object.entries(node.meta || {})) {
+                            if (Array.isArray(value)) {
+                                let terminalLines = value.map(cmd => `<div class="terminal-line"><span class="terminal-prompt">$</span>${cmd}</div>`).join('');
+                                contentHtml += `
+                                    <div class="meta-row">
+                                        <span class="meta-key">${key} (${value.length} commands):</span>
+                                        <div class="terminal-block">${terminalLines}</div>
+                                    </div>`;
+                            } else {
+                                contentHtml += `<div class="meta-row"><span class="meta-key">${key}:</span> <span class="meta-val">${value}</span></div>`;
+                            }
+                        }
+
+                        panelContent.innerHTML = contentHtml;
+                        detailsPanel.style.display = 'block';
+                    })
+                    .onBackgroundClick(() => detailsPanel.style.display = 'none');
+
+                Graph.d3Force('charge').strength(-400);
+                Graph.d3Force('link').distance(75);
+            });
+    </script>
+</body>
+</html>

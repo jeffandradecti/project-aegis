@@ -1,0 +1,46 @@
+# ==========================================
+# EXPLICIT EXCLUSIONS
+# ==========================================
+
+# IDE (PyCharm/VSCode)
+/.idea/
+/.vscode/
+
+# Virtual Environment & Secrets
+.venv/
+.env
+.ssh/
+
+# Cloud CLI & Executables
+aws-cli/
+*.exe
+
+# Terraform State & Artifacts
+**/.terraform/
+*.tfstate
+*.tfstate.*
+# NOTE: We generally RECOMMEND committing .terraform.lock.hcl
+# but excluding it is fine for solo private labs.
+
+# Build Artifacts
+*.zip
+*.iso
+
+# Project Outputs & Data
+/forensics/
+/data/
+/backup-data/
+/intel/commands.csv
+
+# ==========================================
+# STANDARD PYTHON & OS EXCLUSIONS
+# ==========================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
